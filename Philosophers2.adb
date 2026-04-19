@@ -1,0 +1,51 @@
+with Ada.Text_IO; use Ada.Text_IO;
+with GNAT.Semaphores; use GNAT.Semaphores;
+
+procedure Philosophers_App is
+
+   Num_Philosophers : constant Integer := 5;
+   Total_Meals      : constant Integer := 5;
+
+   Waiter : Counting_Semaphore (2, Default_Ceiling);
+   Forks  : array (0 .. Num_Philosophers - 1) of Binary_Semaphore (True, Default_Ceiling);
+   
+   task type Philosopher_Task (Id : Integer);
+
+   task body Philosopher_Task is
+      -- Визначаємо індекси лівої та правої виделок
+      Left_Fork  : constant Integer := Id;
+      Right_Fork : constant Integer := (Id + 1) mod Num_Philosophers;
+   begin
+      for Meal in 1 .. Total_Meals loop
+         Put_Line ("Philosopher" & Id'Img & " think     [iteration" & Meal'Img & "/" & Total_Meals'Img & "]");
+
+         -- Запитуємо дозволу у офіціанта 
+         Waiter.Seize;
+
+         -- Беремо виделки 
+         Forks (Left_Fork).Seize;
+         Forks (Right_Fork).Seize;
+
+         -- Прийом їжі
+         Put_Line ("Philosopher" & Id'Img & " eat               [iteration" & Meal'Img & "/" & Total_Meals'Img & "]");
+
+         -- Кладемо виделки 
+         Forks (Right_Fork).Release;
+         Forks (Left_Fork).Release;
+
+         -- Повертаємо дозвіл офіціанту
+         Waiter.Release;
+      end loop;
+
+      Put_Line ("--- Philosopher" & Id'Img & " finished all meals ---");
+   end Philosopher_Task;
+
+   type Philosopher_Access is access Philosopher_Task;
+   Philosopher_Obj : Philosopher_Access;
+
+begin
+   -- Створюємо філософів динамічно
+   for I in 0 .. Num_Philosophers - 1 loop
+      Philosopher_Obj := new Philosopher_Task (I);
+   end loop;
+end Philosophers_App;
